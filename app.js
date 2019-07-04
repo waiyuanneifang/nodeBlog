@@ -1,8 +1,13 @@
+const querystring = require("querystring")
 const handleBlogRouter = require("./src/router/blog.js")
 const handleUserRouter = require("./src/router/user.js")
 
 const serverHandle = (req, res) => {
-	res.setHeader("Content-Type", "application/json")
+	res.setHeader("Content-type", "application/json")
+
+	const url = req.url
+	req.path = url.split("?")[0]
+	req.query = querystring.parse(url.split("?")[1])
 
 	// 处理bolg路由
 	const blogData = handleBlogRouter(req, res)
@@ -19,7 +24,7 @@ const serverHandle = (req, res) => {
 	}
 
 	// 未命中路由返回404
-	res.writeHead(404, { "Content-Type": "text/plain" })
+	res.writeHead(404, { "Content-type": "text/plain" })
 	res.write("404 Not Found\n")
 	res.end()
 }
