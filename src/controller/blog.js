@@ -12,13 +12,8 @@ const getList = (author, keyword) => {
 	return exec(sql)
 }
 const getDetail = id => {
-	return {
-		id: 1,
-		title: "标题A",
-		content: "内容A",
-		createTime: 1546610491112,
-		author: "zhangsan"
-	}
+	let sql = `select * from blogs where id='${id}'`
+	return exec(sql)
 }
 
 const newBlog = (blogData = {}) => {
