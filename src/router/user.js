@@ -1,4 +1,4 @@
-const { loginchunk } = require("../controller/user.js")
+const { login } = require("../controller/user.js")
 const { SuccessModel, ErrorModel } = require("../model/resModel.js")
 
 const handleUserRouter = (req, res) => {
@@ -6,11 +6,28 @@ const handleUserRouter = (req, res) => {
 
 	if (method === "POST" && req.path === "/api/user/login") {
 		const { username, password } = req.body
-		const data = loginchunk(username, password)
-		if (data) {
-			return new SuccessModel()
-		}
-		return new ErrorModel("登录失败")
+		const result = login(username, password)
+		return result.then(data => {
+			if (data) {
+				return new SuccessModel(data)
+			}
+			return new ErrorModel("登录失败")
+		})
+	}
+
+	if (method === "GET" && req.path === "/api/user/test-login") {
+		const { username, password } = req.query
+		const result = login(username, password)
+		return result.then(data => {
+			if (data) {
+				req.session.username = data.username
+				req.session.realname = data.realname
+				return new SuccessModel({
+					session: req.session
+				})
+			}
+			return new ErrorModel("登录失败")
+		})
 	}
 }
 
