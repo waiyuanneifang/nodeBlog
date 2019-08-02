@@ -8,7 +8,7 @@ const {
 const { SuccessModel, ErrorModel } = require("../model/resModel.js")
 
 const logincheck = req => {
-	if (req.session.username) {
+	if (!req.session.username) {
 		return Promise.resolve(new ErrorModel("尚未登录"))
 	}
 }
@@ -17,8 +17,16 @@ const handleBlogRouter = (req, res) => {
 	const method = req.method
 
 	if (method === "GET" && req.path === "/api/blog/list") {
-		const author = req.query.author || ""
+		let author = req.query.author || ""
 		const keyword = req.query.keyword || ""
+		if (req.query.isadmin) {
+			const logincheckResult = logincheck(req)
+			if (logincheckResult) {
+				return logincheckResult
+			}
+			author = req.session.username
+		}
+
 		const result = getList(author, keyword)
 		return result.then(listData => {
 			return new SuccessModel(listData)
@@ -36,7 +44,7 @@ const handleBlogRouter = (req, res) => {
 	if (method === "POST" && req.path === "/api/blog/new") {
 		const logincheckResult = logincheck(req)
 		if (logincheckResult) {
-			return logincheck
+			return logincheckResult
 		}
 
 		req.body.author = req.session.username
@@ -47,8 +55,9 @@ const handleBlogRouter = (req, res) => {
 	}
 
 	if (method === "POST" && req.path === "/api/blog/update") {
+		const logincheckResult = logincheck(req)
 		if (logincheckResult) {
-			return logincheck
+			return logincheckResult
 		}
 
 		const id = req.query.id
@@ -64,7 +73,7 @@ const handleBlogRouter = (req, res) => {
 
 	if (method === "POST" && req.path === "/api/blog/delete") {
 		if (logincheckResult) {
-			return logincheck
+			return logincheckResult
 		}
 
 		const id = req.query.id
