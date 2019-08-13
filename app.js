@@ -1,6 +1,8 @@
 const querystring = require("querystring")
 const handleBlogRouter = require("./src/router/blog.js")
 const handleUserRouter = require("./src/router/user.js")
+const { access } = require("./src//utils/log.js")
+const { get } = require("./src/db/redis.js")
 
 const getCoolieExpires = () => {
 	const d = new Date()
@@ -32,6 +34,13 @@ const getPostData = req => {
 }
 
 const serverHandle = (req, res) => {
+	// 记录 access log
+	access(
+		`${req.method} -- ${req.url} -- ${
+			req.headers["user-agent"]
+		} -- ${Date.now()}`
+	)
+
 	res.setHeader("Content-type", "application/json")
 
 	const url = req.url
@@ -50,27 +59,19 @@ const serverHandle = (req, res) => {
 	})
 
 	// 解析session
-	const SESSION_DATA = {}
-	let needSetCookie = false
 	let userId = req.cookie.userid
-	if (userId) {
-		if (!SESSION_DATA[userId]) {
-			SESSION_DATA[userId] = {}
-		}
-	} else {
-		needSetCookie = true
-		userId = `${Date.now()}_${Math.random()}`
-		SESSION_DATA[userId] = {}
-	}
-	req.session = SESSION_DATA[userId]
+	req.session = {}
 
-	getPostData(req).then(postData => {
-		req.body = postData
+	Promise.all([get(userId), getPostData(req)]).then(results => {
+		if (userId) {
+			req.session = results[0]
+		}
+		req.body = results[1]
 		// 处理bolg路由
 		const blogResult = handleBlogRouter(req, res)
 		if (blogResult) {
 			blogResult.then(blogData => {
-				if (needSetCookie) {
+				if (userId) {
 					res.setHeader(
 						"Set-Cookie",
 						`userid=${userId}; path=/; httpOnly; expires=${getCoolieExpires()}`
@@ -82,13 +83,21 @@ const serverHandle = (req, res) => {
 		}
 
 		// 处理user路由
-		const userData = handleUserRouter(req, res)
-		if (userData) {
-			userData.then(userData => {
-				if (needSetCookie) {
+		const userResult = handleUserRouter(req, res)
+		if (userResult) {
+			userResult.then(userData => {
+				if (userId) {
 					res.setHeader(
 						"Set-Cookie",
 						`userid=${userId}; path=/; httpOnly; expires=${getCoolieExpires()}`
+					)
+				}
+				if (userData.data.id) {
+					res.setHeader(
+						"Set-Cookie",
+						`userid=${
+							userData.data.id
+						}; path=/; httpOnly; expires=${getCoolieExpires()}`
 					)
 				}
 				res.end(JSON.stringify(userData))
